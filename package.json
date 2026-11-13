@@ -1,0 +1,1 @@
+{"name":"wearablemutter","version":"0.1.0","private":true,"type":"module","scripts":{"test":"node check.cjs && node drive-check.cjs && node --test tests/*.test.mjs","check":"node --check dist/app.js && node --check dist/live.js && node --check dist/memory.js && node --check dist/google-account.js"},"devDependencies":{"jsdom":"^31.0.1"}}
