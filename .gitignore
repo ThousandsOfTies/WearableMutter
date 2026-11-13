@@ -1,0 +1,8 @@
+.env
+.env.*
+!.env.example
+node_modules/
+*.log
+diagnostic-logs*.json
+*client_secret*.json
+__pycache__/
