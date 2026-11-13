@@ -170,29 +170,29 @@ export class LiveGoogleAccount {
     };
   }
 
-  async findSettingsFile() {
-    const q = `name = '${SETTINGS_FILE}' and trashed = false`;
+  async findSettingsFile(filename = SETTINGS_FILE) {
+    const q = `name = '${filename}' and trashed = false`;
     const response = await this.request(`https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=${encodeURIComponent(q)}&fields=files(id,name)&pageSize=10`);
     return (await response.json()).files?.[0]?.id || null;
   }
 
-  async loadSettings() {
+  async loadSettings(filename = SETTINGS_FILE, validate = validateDriveSettings) {
     await this.authorizeDrive();
     const check = this.settingsAccountCheck();
-    const id = await this.findSettingsFile();
+    const id = await this.findSettingsFile(filename);
     check();
     if (!id) return null;
     const response = await this.request(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?alt=media`);
-    const settings = validateDriveSettings(await response.json());
+    const settings = validate(await response.json());
     check();
     return settings;
   }
 
-  async saveSettings(input) {
+  async saveSettings(input, filename = SETTINGS_FILE, validate = validateDriveSettings) {
     await this.authorizeDrive();
     const check = this.settingsAccountCheck();
-    const settings = validateDriveSettings(input);
-    const id = await this.findSettingsFile();
+    const settings = validate(input);
+    const id = await this.findSettingsFile(filename);
     check();
     if (id) {
       await this.request(`https://www.googleapis.com/upload/drive/v3/files/${encodeURIComponent(id)}?uploadType=media`, {
@@ -201,7 +201,7 @@ export class LiveGoogleAccount {
       check();
       return id;
     }
-    const body = multipartJson({ name: SETTINGS_FILE, mimeType: 'application/json', parents: ['appDataFolder'] }, settings);
+    const body = multipartJson({ name: filename, mimeType: 'application/json', parents: ['appDataFolder'] }, settings);
     const response = await this.request('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', { method: 'POST', body });
     const saved = await response.json();
     check();

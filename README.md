@@ -1,57 +1,64 @@
-# WearableMutter — Safari音声検証
+# WearableMutter
 
-WearableMutterは、日常の会話を聞き、自然な英語表現をイヤフォンへそっと伝える英語学習アプリの検討プロジェクトです。
+**そのひとこと、英語なら。** 日本語の独り言、英語の言い方の相談、発音練習に付き合う音声の相棒です。
 
-現在はSafariでの音声利用を調べる検証サンプルです。ローカル録音・Gemini Live・Googleログイン・DriveへのAPIキー保存を含みます。本体の学習UIは未実装です。
+## 使う
 
-**次の担当AIは [TODO.md](TODO.md) を最初に確認してください。** Googleの設定状況、残作業、利用者との合意、ローカル作業環境の注意を記載しています。
+https://wearablemutter-safari-audio-test.thousands-of-ties.chatgpt.site/
 
-テストページ: https://wearablemutter-safari-audio-test.thousands-of-ties.chatgpt.site/
+既存の所有者限定ページを使用します。閲覧用のChatGPTログインと、記憶保存用のGoogleログインは別です。
 
-閲覧には所有者のChatGPTログインが必要です。Googleログインとは別です。GitHubへの登録だけではテストページは更新されません。`dist/` が配信用の静的ファイルで、ビルドは不要です。
+1. 「設定」でGoogleにログインします。Google Cloudがテストモードなら、事前にテストユーザー登録が必要です。
+2. 自分のGemini APIキーを入力し、「Driveへ保存」を押します。
+3. 「話す」で「いつもの会話」または「発音を練習」を選び、会話を開始します。
+4. 終わったら「会話を終える」を押し、Driveへの保存完了を確認します。
+5. 別端末では同じGoogleアカウントにログインすると、保存済みのキーと学習記録を読み込みます。
 
-## 試す
+端末は1台ずつ使用し、Driveへ上書き保存する前提です。複数端末の同時利用や履歴マージは実装しません。
 
-HTTPSでdistを配信し、iPhoneのSafariで開きます。
+## 覚えていること
 
-1. ローカル録音を開始し、画面ロック10秒後・30秒後に別々の言葉を話す。
-2. 画面へ戻り停止。録音を再生してロック中の発言を確認する。
-3. Gemini Liveに切り替え、自分のAPIキーを入力して同じ操作。ロック中の返答を耳で確認する。
-4. 他アプリへの切り替え、ホーム画面に追加した版でも繰り返す。
-5. 必要ならplay-and-record指定をOFFにして比較する。
+- 教えた表現、日本語の場面、説明、思い出すためのヒント。
+- 紹介／復唱／ヒントで想起／自力で使用／発音練習／判定不確か、という観測の記録。
+- 実際の音声から確認した発音の練習点。文字起こしの一致だけで発音を評価しません。
+- 利用者が明示した説明の好みなど。人物像や健康情報の推測は指示しません。
 
-マイクtrackのlive状態やWebSocket OPENだけでは成功を意味しません。実録音・Google側の入力文字起こし・耳で聞いた出力と照合してください。デスクトップの動作はiOSの成功証明にはなりません。
+AIのツール呼び出しで記録・検索し、次の会話へ直近60件を渡します。それ以外は検索ツールで参照できます。最大1000件、各記憶の練習履歴は直近30件です。AIが記録した内容を本人がカード一覧で確認できます。記録や評価の正確さは保証されず、実機での調整が必要です。
 
-## 方式
+カードの「⋯」から個別削除、または練習記録のみリセットできます。8秒間は元に戻せます。全件リセットは確認後に実行し、APIキーとログイン設定を残します。記憶の変更時は会話を終了し、次の接続で変更後の記憶を使用します。
 
-DeContradictorのsrc/gemini-live.jsに合わせ、WebSocket、16kHz PCM入力、24kHz PCM応答、ScriptProcessorによる入力処理とWeb Audio再生を採用。ScriptProcessorは非推奨APIですが既存方式との比較のため維持しています。この結果は全Web実装の限界を示すものではありません。
+## 保存
 
-自動再接続・無音音源による常駐・Wake Lockは使いません。再生専用のテスト音は独立したHTML audioです。マイクテスト時はテスト音を停止しておきます。
+Google Driveの `appDataFolder` に以下を別々に保存します。
 
-録音はメモリのみ、状態ログはlocalStorage。APIキーは通常は入力欄と実行中のメモリのみ。「Driveへ保存」を押すとアプリ専用領域のwearablemutter-safari-settings.jsonへ保存します（アプリ側の暗号化なし）。Googleログイン時に復元し、アカウント変更・ログアウトではLiveを停止して入力欄を消去します。DeContradictorのファイルとは分離しています。Googleの短期トークンはタブのsessionStorageへ保存し、期限切れ時は再ログインが必要です。
+- `wearablemutter-safari-settings.json`: 既存と互換のAPIキー設定。
+- `wearablemutter-learning.json`: 学習メモと練習結果。
 
-GoogleログインにはWearableMutter専用の公開OAuthクライアントIDを使用します。プロジェクトIDはpure-faculty-514606-e1、WebクライアントIDは874050203988-kki46d1he3fj4kmoni3i9ladu84fujn1.apps.googleusercontent.comです。テストページのHTTPS生成元は登録済みです。使用スコープはopenid・email・profile・drive.appdataで、Drive全体への権限は要求しません。Googleログイン・Drive復元処理はDeContradictorのLiveGoogleAccountを元にしています。テストモードではGoogle Cloudのテストユーザー登録が別途必要です。
+学習記録はGoogleアカウントごとのlocalStorageにも一時保存し、会話の区切りや終了時にDriveへ自動保存します。保存失敗時は未保存と表示し、同じ端末・同じアカウントで再ログインして再試行できます。未保存の記録がある場合、Drive読込より端末内の未保存記録を優先します。意図して戻す場合は「Driveから読み直す」を使用します。localStorageの削除やプライベートブラウズ終了では、未同期記録が失われることがあります。
 
-Live時はGoogleへキーと音声が送られ、API料金が発生します。キーはURLのWebSocket認証に使用するため、開発者ツールの通信画面には表示されます。ログ出力では伏せます。
+音声ファイル・会話全文は保存しません。文字起こしは画面表示用のメモリのみで、ログアウト／再読み込みで消去します。APIキーは入力欄と実行中メモリ、明示したDrive保存先に置き、端末の永続ストレージには置きません。OAuth短期トークンはタブのsessionStorageです。Drive上のデータにアプリ独自の暗号化はありません。Geminiには音声と関連する学習メモを送信し、API料金が発生します。
 
-3分で停止を試みますが、バックグラウンドでJavaScriptが停止するとタイマーも遅れます。必ず復帰して停止してください。接続・認識の実機検証には利用者のキーが必要です。
+## 接続と制約
 
-## ローカル表示
+Gemini LiveのWebSocketを使用し、16kHz PCM音声を送信、24kHz PCM音声を再生します。ScriptProcessorは既存方式を維持しており非推奨APIです。モデルは設定画面で変更できます。音声の割り込み時には再生待ちを破棄し、接続断・マイク終了時は停止します。自動再接続はしません。
 
-python -m http.server 8787 --directory dist --bind 127.0.0.1
+会話時間は5／15／30分。処理再開時にも期限を確認しますが、OSがJavaScriptを停止している間の即時停止は保証できません。iPhoneの画面ロック中や他アプリ表示中の継続は未保証です。長時間利用前に `VALIDATION.md` の実機試験を実施してください。
 
-localhostは開発用です。iPhoneで検証する場合はHTTPS配信URLを使用してください。
+Google OAuth公開クライアントIDは設定済み。プロジェクトは `pure-faculty-514606-e1`、スコープは `openid email profile drive.appdata` です。APIキー、トークン、クライアントシークレットはコミットしないでください。
 
-## 確認状況
+## 開発・確認
 
-利用者のiPhoneでは、画面ロック中のローカル録音とGemini Liveの応答を確認済みです。端末・iOS版・継続時間を記録した体系的な試験は未実施です。Googleのテストユーザー登録と、実アカウントでのDrive保存・復元確認が残っています。
+ビルド不要。配信ファイルは `dist/` です。
 
 ```sh
-node --check dist/app.js
-node --check dist/google-account.js
-node --check dist/key-sync.js
-node check.cjs
-node drive-check.cjs
+python -m http.server 8787 --directory dist --bind 127.0.0.1
+npm ci
+npm test
+npm run check
 ```
 
-モック試験であり、実際のGoogle認証・Gemini接続・iOSでの継続動作を保証するものではありません。APIキー・OAuthトークン・クライアントシークレットはコミットしないでください。
+テストはモック・DOM環境での音声送受信、学習記録、Drive作成／更新／復元、削除と取り消し、全件リセット、保存失敗、別端末への引き継ぎを検証します。実際のGoogle認証、Gemini音声応答、iPhoneの動作を証明するものではありません。
+
+従来の音声診断サンプルは `audio-test.html` に残しています。診断ページのみ、状態ログをlocalStorageへ保存します。
+
+GitHubとSitesのソース履歴は別です。GitHubへのpushだけでは配信ページは更新されません。Sites project IDは `.openai/hosting.json` を参照し、既存プロジェクトを更新します。
