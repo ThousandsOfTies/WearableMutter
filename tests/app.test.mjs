@@ -31,7 +31,7 @@ async function harness({remote=null,failSave=false,cache=null}={}){
 }
 test('teach -> local record -> Drive -> next device context; delete and undo',async()=>{
  const h=await harness();try{
- await h.click('start');assert.equal(h.live.active,true);
+ await h.click('start');assert.equal(h.live.active,true);assert.equal(h.live.options.mode,'ambient');assert.equal(h.live.options.intervalSeconds,120);
  h.live.callbacks.onTool('remember_learning',{kind:'expression',title:'朝の挨拶',english:'Good morning',hint:'Good…',result:'introduced'});
  assert.equal(h.$('count').textContent,'1');assert.match(h.$('memory-list').textContent,/Good morning/);
  await h.save();const snapshot=h.writes.find(x=>x.name===memory.MEMORY_FILE).data;assert.equal(snapshot.memories.length,1);

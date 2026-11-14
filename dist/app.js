@@ -3,7 +3,7 @@ import {MEMORY_FILE,emptyLearning,validateLearning,remember,restartMemory,memory
 import {LiveConversation} from './live.js';
 const $=id=>document.getElementById(id);
 const DEFAULT_CLIENT='874050203988-kki46d1he3fj4kmoni3i9ladu84fujn1.apps.googleusercontent.com';
-let account,owner=null,learning=emptyLearning(),dirty=false,revision=0,ready=false,mode='talk',live=null,saving=null,saveTimer,elapsedTimer,busy=false,undoTimer,initializing=true;
+let account,owner=null,learning=emptyLearning(),dirty=false,revision=0,ready=false,mode='ambient',live=null,saving=null,saveTimer,elapsedTimer,busy=false,undoTimer,initializing=true;
 const bubbles={};let undoAction=null;
 function notice(message=''){$('notice').textContent=message;$('notice').hidden=!message;}
 function syncStatus(message){$('sync-status').textContent=message;$('sync-talk').textContent=message;}
@@ -15,12 +15,13 @@ function controls(){const signed=account?.signedIn;const active=!!live?.active;
  $('start').disabled=busy||active||initializing;$('start').hidden=active;$('stop').hidden=!active;$('resume').hidden=!active;
  $('login').hidden=!!signed;for(const id of ['switch','logout'])$(id).hidden=!signed;
  for(const id of ['login','switch','logout','apply-client','save','reload'])$(id).disabled=busy||initializing||!!saving||(['save','reload'].includes(id)&&!signed)||(id==='save'&&!ready);
- document.querySelectorAll('[data-mode],#model,#minutes,#key').forEach(el=>el.disabled=active||busy);
- $('connection').textContent=active?'一緒に話しています':ready?'準備できています':signed?'記憶を準備中':'おやすみ中';$('orb').classList.toggle('live',active);
+ document.querySelectorAll('[data-mode],#model,#minutes,#interval,#key').forEach(el=>el.disabled=active||busy);
+ $('start').firstChild.textContent=mode==='practice'?'練習を始める ':'聞いていてもらう ';$('stop').textContent=mode==='practice'?'練習を終える':'聞くのをやめる';
+ $('connection').textContent=active?(mode==='practice'?'発音を練習中':'聞き取り中 · たまにつぶやき'):ready?'準備できています':signed?'記憶を準備中':'おやすみ中';$('orb').classList.toggle('live',active);
 }
 function page(name){document.querySelectorAll('.page').forEach(el=>el.hidden=el.id!=='page-'+name);document.querySelectorAll('[data-page]').forEach(el=>{el.classList.toggle('selected',el.dataset.page===name);if(el.dataset.page===name)el.setAttribute('aria-current','page');else el.removeAttribute('aria-current');});}
 document.querySelectorAll('[data-page]').forEach(el=>el.onclick=()=>page(el.dataset.page));
-document.querySelectorAll('[data-mode]').forEach(el=>el.onclick=()=>{mode=el.dataset.mode;document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('chosen',b===el));$('talk-help').textContent=mode==='practice'?'「この言い方を練習したい」と話しかけてください。':'「こういうとき何て言うの？」から始めてみてください。';});
+document.querySelectorAll('[data-mode]').forEach(el=>el.onclick=()=>{mode=el.dataset.mode;document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('chosen',b===el));$('talk-help').textContent=mode==='practice'?'「この言い方を練習したい」と話しかけてください。':'普段どおりに話していてください。質問するときは「相棒、英語でどう言うの？」とどうぞ。';controls();});
 function transcript(role,text){if(role==='complete'||role==='interrupted'){for(const k of Object.keys(bubbles))delete bubbles[k];return;}
  if(!bubbles[role]){document.querySelector('#transcript .empty-small')?.remove();const b=document.createElement('div');b.className='bubble '+role;const label=document.createElement('small');label.textContent=role==='user'?'あなた':'相棒';const body=document.createElement('span');b.append(label,body);$('transcript').append(b);bubbles[role]=body;while($('transcript').children.length>80)$('transcript').firstElementChild.remove();}bubbles[role].textContent+=text;$('transcript').scrollTop=$('transcript').scrollHeight;}
 async function stopConversation(){if(live)await live.stop();clearInterval(elapsedTimer);controls();}
@@ -29,7 +30,7 @@ function tool(name,args){if(!owner||!ready)throw Error('学習記録を準備で
  const memory=remember(learning,args);mutated();return {saved:true,id:memory.id};}
 function newLive(){return new LiveConversation({onState:s=>{$('state').textContent=s;controls();if(!live?.active)clearInterval(elapsedTimer);},onTranscript:transcript,onTool:tool,onTurn:()=>{if(dirty)scheduleSave();},onLevel:n=>{$('orb').style.setProperty('--level',n);}});}
 $('start').onclick=async()=>{notice();if(!owner||!ready){page('settings');notice('Googleでログインして、記憶を準備してください。');return;}const key=$('key').value.trim(),model=$('model').value.trim();if(!key||!model){page('settings');notice('Gemini APIキーとモデルを入力してください。');return;}
- live=newLive();const pending=live.start({key,model,context:memoryContext(learning),mode,minutes:Number($('minutes').value)});controls();elapsedTimer=setInterval(()=>{if(!live?.active)return;const sec=Math.floor((Date.now()-live.started)/1000);$('elapsed').textContent=`${Math.floor(sec/60)}:${String(sec%60).padStart(2,'0')} / ${$('minutes').value}分`;},1000);await pending;controls();};
+ live=newLive();const pending=live.start({key,model,context:memoryContext(learning),mode,minutes:Number($('minutes').value),intervalSeconds:Number($('interval').value)});controls();elapsedTimer=setInterval(()=>{if(!live?.active)return;const sec=Math.floor((Date.now()-live.started)/1000);$('elapsed').textContent=`${Math.floor(sec/60)}:${String(sec%60).padStart(2,'0')} / ${$('minutes').value}分`;},1000);await pending;controls();};
 $('stop').onclick=()=>void stopConversation();$('resume').onclick=()=>{void live?.resume().catch(()=>notice('音声を再開できません。会話を終了して再度開始してください。'));};
 document.addEventListener('visibilitychange',()=>{if(live?.active)live.expired();if(document.visibilityState==='visible'&&dirty)scheduleSave();});window.addEventListener('pageshow',()=>{if(live?.active)live.expired();});window.addEventListener('offline',()=>{if(live?.active)void live.stop('通信が切れました。接続を確認して再度開始してください。');});window.addEventListener('online',()=>{if(dirty)scheduleSave();});window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});
 async function saveDrive(){
